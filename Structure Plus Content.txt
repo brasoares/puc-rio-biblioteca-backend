@@ -1,0 +1,152 @@
+📂 app.py: "from flask import Flask
+from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
+from flask_cors import CORS
+
+app = Flask(__name__)
+CORS(app)
+
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///biblioteca.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+db = SQLAlchemy(app)
+migrate = Migrate(app, db)
+
+# Import models
+from models.usuario import Usuario
+from models.livro import Livro
+from models.association import livros_usuarios
+
+# Import routes
+from routes.usuarios import usuarios_bp
+from routes.livros import livros_bp
+from routes.stats import stats_bp
+
+# Register routes
+app.register_blueprint(usuarios_bp)
+app.register_blueprint(livros_bp)
+app.register_blueprint(stats_bp)
+
+if __name__ == '__main__':
+    app.run(debug=True)"
+
+📂 models/__init__.py: "# Empty file to make 'models' a package"
+
+📂 models/usuario.py: "from app import db
+
+class Usuario(db.Model):
+    __tablename__ = 'usuarios'
+
+    id_usuario = db.Column(db.Integer, primary_key=True)
+    nome = db.Column(db.String(100), nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=False)"
+
+📂 models/livro.py: "from app import db
+
+class Livro(db.Model):
+    __tablename__ = 'livros'
+
+    id_livro = db.Column(db.Integer, primary_key=True)
+    titulo = db.Column(db.String(200), nullable=False)
+    autor = db.Column(db.String(200), nullable=False)
+    genero = db.Column(db.String(100))
+    status = db.Column(db.String(50), default="disponível")
+    capa_url = db.Column(db.String(300))"
+
+📂 models/association.py: "from app import db
+
+livros_usuarios = db.Table(
+    'livros_usuarios',
+    db.Column('id_livro', db.Integer, db.ForeignKey('livros.id_livro')),
+    db.Column('id_usuario', db.Integer, db.ForeignKey('usuarios.id_usuario'))
+)"
+
+📂 routes/__init__.py: "# Empty file to make 'routes' a package"
+
+📂 routes/usuarios.py: "from flask import Blueprint, jsonify, request
+from app import db
+from models.usuario import Usuario
+
+usuarios_bp = Blueprint('usuarios', __name__)
+
+@usuarios_bp.route('/usuarios', methods=['GET'])
+def listar_usuarios():
+    usuarios = Usuario.query.all()
+    return jsonify([{"id": u.id_usuario, "nome": u.nome, "email": u.email} for u in usuarios])
+
+@usuarios_bp.route('/usuarios', methods=['POST'])
+def criar_usuario():
+    data = request.get_json()
+    novo = Usuario(nome=data['nome'], email=data['email'])
+    db.session.add(novo)
+    db.session.commit()
+    return jsonify({"id": novo.id_usuario, "nome": novo.nome, "email": novo.email}), 201"
+
+📂 routes/livros.py: "from flask import Blueprint, jsonify, request
+from app import db
+from models.livro import Livro
+
+livros_bp = Blueprint('livros', __name__)
+
+@livros_bp.route('/livros', methods=['GET'])
+def listar_livros():
+    livros = Livro.query.all()
+    return jsonify([{"id": l.id_livro, "titulo": l.titulo, "autor": l.autor} for l in livros])
+
+@livros_bp.route('/livros', methods=['POST'])
+def criar_livro():
+    data = request.get_json()
+    novo = Livro(
+        titulo=data['titulo'],
+        autor=data['autor'],
+        genero=data.get('genero'),
+        status=data.get('status', 'disponível'),
+        capa_url=data.get('capa_url')
+    )
+    db.session.add(novo)
+    db.session.commit()
+    return jsonify({"id": novo.id_livro, "titulo": novo.titulo, "autor": novo.autor}), 201"
+
+📂 routes/stats.py: "from flask import Blueprint, jsonify
+from models.usuario import Usuario
+from models.livro import Livro
+
+stats_bp = Blueprint('stats', __name__)
+
+@stats_bp.route('/stats', methods=['GET'])
+def get_stats():
+    total_usuarios = Usuario.query.count()
+    total_livros = Livro.query.count()
+
+    return jsonify({
+        "total_usuarios": total_usuarios,
+        "total_livros": total_livros
+    })"
+
+Structure should be?:
+
+puc-rio-biblioteca-backend/
+│
+├── app.py
+├── requirements.txt
+├── README.md
+├── LICENSE
+│
+├── models/
+│   ├── __init__.py
+│   ├── usuario.py
+│   ├── livro.py
+│   └── association.py
+│
+├── routes/
+│   ├── __init__.py
+│   ├── usuarios.py
+│   ├── livros.py
+│   └── stats.py
+│
+└── migrations/
+    ├── env.py
+    ├── README
+    ├── alembic.ini
+    ├── versions/
+    │   └── <timestamp>_initial_tables.py
